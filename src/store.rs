@@ -114,10 +114,10 @@ pub struct ChunkMatrixStore<T> {
 
 impl<T: Clone + Default> ChunkMatrixStore<T> {
     /// * `initialSize` - initial size of the store in terms of the number of groups of fields;
-    ///                   though depending on the chunkSize, you may see your initialSize larger
-    ///                   than requested; minimum valid value is 1
+    ///   though depending on the chunkSize, you may see your initialSize larger
+    ///   than requested; minimum valid value is 1
     /// * `chunkSize` - the size of the arrays used internally which impact data locality and growth.
-    ///                 minimum value is 2, and given values will be rounded up to the next power of 2
+    ///   minimum value is 2, and given values will be rounded up to the next power of 2
     /// * `numFields` - the number of logical fields in the store; minimum valid value is 1
     pub fn new(initial_size: usize, chunk_size: usize, num_fields: usize) -> Self {
         assert!(initial_size >= 1, "initial_size must be at least 1");
