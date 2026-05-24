@@ -51,7 +51,7 @@ impl<K: Default + Clone + PartialEq + Hash> IndexedSet<K> {
     /// Creates a new `IndexedSet` with the given initial capacity and load factor.
     pub fn with_capacity(initial_capacity: usize, load_factor: f64) -> Self {
         let capacity =
-            next_power_of_2((initial_capacity.max(2) as u32).try_into().unwrap()) as usize;
+            next_power_of_2((initial_capacity.max(2) as u32).try_into().unwrap());
         let resize_threshold = (capacity as f64 * load_factor) as usize;
 
         Self {
@@ -141,8 +141,8 @@ impl<K: Default + Clone + PartialEq + Hash> IndexedSet<K> {
             }
 
             self.free_reserved_entry(entry);
-            self.size = self.size - 1;
-            self.modification_count = self.modification_count + 1;
+            self.size -= 1;
+            self.modification_count += 1;
             return;
         }
     }
@@ -222,12 +222,12 @@ impl<K: Default + Clone + PartialEq + Hash> IndexedSet<K> {
                 continue;
             }
             return Some(FindResult {
-                head: Some(head as usize),
+                head: Some(head),
                 entry: Some(e as usize),
                 prev_entry: if prev >= 0 { Some(prev as usize) } else { None },
             });
         }
-        return None;
+        None
     }
 
     fn get_head(&self, entry: i32) -> i32 {
@@ -243,6 +243,7 @@ impl<K: Default + Clone + PartialEq + Hash> IndexedSet<K> {
         (hash & (self.heads.len() - 1) as u64) as usize
     }
 
+    #[allow(clippy::needless_range_loop)]
     fn rehash(&mut self) {
         let old_heads = self.heads.clone();
         let old_nexts = self.nexts.clone();
@@ -261,13 +262,13 @@ impl<K: Default + Clone + PartialEq + Hash> IndexedSet<K> {
         for i in 0..len {
             let mut entry = old_heads[i];
             while entry >= 0 {
-                let new_head = self.compute_head(&self.keys[entry as usize]).clone();
+                let new_head = self.compute_head(&self.keys[entry as usize]);
                 self.register_new_entry_for_head(new_head as i32, entry as usize);
                 self.max_head = std::cmp::max(self.max_head, new_head);
                 entry = old_nexts[entry as usize];
             }
         }
-        self.modification_count = self.modification_count + 1;
+        self.modification_count += 1;
     }
 
     fn register_new_entry_for_head(&mut self, head: i32, entry: usize) {
@@ -333,7 +334,7 @@ impl<K: Default + Clone + PartialEq + Hash> IndexedSet<K> {
         Iter {
             set: self,
             initialized: false,
-            internal_mod_count: self.modification_count.clone(),
+            internal_mod_count: self.modification_count,
             head: -1,
             entry: -1,
             prev: -1,
