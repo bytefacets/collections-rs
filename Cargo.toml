@@ -1,6 +1,20 @@
+# SPDX-FileCopyrightText: Copyright (c) 2026 Byte Facets
+# SPDX-License-Identifier: MIT
+
 [package]
 name = "collections-rs"
 version = "0.1.0"
 edition = "2021"
 
+[profile.dev]
+debug = true
+
 [dependencies]
+rustc-hash = "2.1.2"
+
+[dev-dependencies]
+criterion = "0.8.2"
+
+[[bench]]
+name = "indexed_set"
+harness = false
