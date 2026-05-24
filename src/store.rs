@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright (c) 2025 Byte Facets
+// SPDX-FileCopyrightText: Copyright (c) 2026 Byte Facets
 // SPDX-License-Identifier: MIT
 
 #![allow(dead_code)]
@@ -146,7 +146,7 @@ impl<T: Clone + Default> ChunkMatrixStore<T> {
     /// Returns the value at the given row and field. If the row is beyond the capacity
     /// of the store, it will return the type's default value. The field should be
     /// within the numFields with which the store was instantiated or it will panic.
-    pub fn get(&self, row: usize, field: usize) -> T {
+    pub fn get(&self, row: usize, field: usize) -> Option<&T> {
         if field >= self.num_fields {
             panic!(
                 "Field {} is out of bounds for num_fields {}",
@@ -154,12 +154,28 @@ impl<T: Clone + Default> ChunkMatrixStore<T> {
             );
         }
         if row >= self.capacity {
-            return T::default();
+            return None;
         }
         let absolute_ix = (row * self.num_fields) + field;
         let offset = absolute_ix & self.chunk_mask;
         let chunk = absolute_ix >> self.shift;
-        self.chunks[chunk][offset].clone()
+        self.chunks.get(chunk).and_then(|c| c.get(offset))
+    }
+
+    pub fn get_mut(&mut self, row: usize, field: usize) -> Option<&mut T> {
+        if field >= self.num_fields {
+            panic!(
+                "Field {} is out of bounds for num_fields {}",
+                field, self.num_fields
+            );
+        }
+        if row >= self.capacity {
+            return None;
+        }
+        let absolute_ix = (row * self.num_fields) + field;
+        let offset = absolute_ix & self.chunk_mask;
+        let chunk = absolute_ix >> self.shift;
+        self.chunks.get_mut(chunk).and_then(|c| c.get_mut(offset))
     }
 
     /// Sets the value at the given row and field, growing the store if necessary.
@@ -209,10 +225,14 @@ mod matrix_tests {
     #[test]
     fn test_matrix_get_and_set() {
         let mut matrix = ChunkMatrixStore::<i32>::new(10, 16, 2);
-        assert_eq!(matrix.get(5, 1), 0);
+        assert_eq!(matrix.get(5, 1), Some(&0));
         matrix.set(5, 1, 123);
-        assert_eq!(matrix.get(5, 1), 123);
-        assert_eq!(matrix.get(100, 0), 0); // Test out of bounds row
+        assert_eq!(matrix.get(5, 1), Some(&123));
+        assert_eq!(matrix.get(100, 0), None); // Test out of bounds row
+        if let Some(val) = matrix.get_mut(5, 1) {
+            *val = 456;
+        }
+        assert_eq!(matrix.get(5, 1), Some(&456));
     }
 
     #[test]
@@ -237,6 +257,6 @@ mod matrix_tests {
         matrix.set(15, 3, 99.9);
         // raw_size = 16*4 = 64. chunks = ceil(64/16)=4. capacity = (4*16)/4 = 16
         assert_eq!(matrix.capacity, 16);
-        assert_eq!(matrix.get(15, 3), 99.9);
+        assert_eq!(matrix.get(15, 3), Some(&99.9));
     }
 }
