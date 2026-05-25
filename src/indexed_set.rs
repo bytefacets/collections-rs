@@ -165,7 +165,7 @@ impl<K: Default + Clone + PartialEq + Hash> IndexedSet<K> {
 
     /// Returns the entry for the given key or None if the key is not found.
     pub fn lookup_entry(&self, key: &K) -> Option<usize> {
-        let head = self.compute_head(&key);
+        let head = self.compute_head(key);
         let mut entry = self.heads[head];
         while entry >= 0 {
             if *key == self.keys[entry as usize] {

@@ -74,12 +74,7 @@ impl<K: Default + Clone + PartialEq + Hash, V: Default + Clone> IndexedMap<K, V>
 
     // Retrieves the key at the given entry
     pub fn get_key_at(&self, entry: usize) -> &K {
-        &self.keys.get_key_at(entry)
-    }
-
-    /// Retrieves the key, value pair at the given entry
-    pub fn get_at(&self, entry: usize) -> (&K, &V) {
-        (&self.keys.get_key_at(entry), &self.values[entry])
+        self.keys.get_key_at(entry)
     }
 
     /// Retrieves a reference to the value stored at the given entry
@@ -88,8 +83,18 @@ impl<K: Default + Clone + PartialEq + Hash, V: Default + Clone> IndexedMap<K, V>
     }
 
     /// Retrieves a mutable reference to the value stored at the given entry
-    pub fn get_at_mut(&mut self, entry: usize) -> &mut V {
+    pub fn get_value_at_mut(&mut self, entry: usize) -> &mut V {
         &mut self.values[entry]
+    }
+
+    /// Retrieves the key, value pair at the given entry
+    pub fn get_at(&self, entry: usize) -> (&K, &V) {
+        (self.keys.get_key_at(entry), &self.values[entry])
+    }
+
+    /// Retrieves the key, value pair at the given entry, but the value is mutable
+    pub fn get_at_mut(&mut self, entry: usize) -> (&K, &mut V) {
+        (self.keys.get_key_at(entry), &mut self.values[entry])
     }
 
     /// Removes a key-value pair from the map, returning the entry if it was found
