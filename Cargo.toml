@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 
 [package]
-name = "collections-rs"
+name = "bytefacets-collections"
 version = "0.1.0"
 edition = "2021"
 
@@ -17,4 +17,8 @@ criterion = "0.8.2"
 
 [[bench]]
 name = "indexed_set"
+harness = false
+
+[[bench]]
+name = "indexed_map"
 harness = false

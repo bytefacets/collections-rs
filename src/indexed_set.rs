@@ -9,7 +9,7 @@ use std::hash::BuildHasherDefault;
 use std::hash::{BuildHasher, Hash};
 
 /// The maximum capacity that can be used.
-const MAXIMUM_CAPACITY: usize = 1 << 30;
+pub(crate) const DEFAULT_INITIAL_CAPACITY: usize = 16;
 
 /// Default load factor for hash-based collections.
 const DEFAULT_LOAD_FACTOR: f64 = 0.75;
@@ -30,9 +30,10 @@ pub struct IndexedSet<K> {
     modification_count: usize,
     max_head: usize,
     load_factor: f64,
-    /// The values of the map.
+    // hash table implementation
     heads: Vec<i32>,
     nexts: Vec<i32>,
+    /// The values of the set.
     keys: Vec<K>,
 }
 
@@ -85,12 +86,15 @@ impl<K: Default + Clone + PartialEq + Hash> IndexedSet<K> {
         self.size == 0
     }
 
-    /// Adds a key to the set and returns a tuple with the entry in the underlying storage,
-    /// and whether the key was added (true) or already in the set (false).
+    /// Adds a key to the set and returns a tuple with whether the key was
+    /// added (true), or already in the set (false), and the entry where they key was stored.
     /// The returned value is a contract that the key will be addressable in `get_key_at`
     /// or `remove_at`
+    /// Returns a tuple indicating:
+    /// - Whether the key was newly inserted (true) or already existed (false)
+    /// - The entry index in the map
     pub fn insert(&mut self, key: K) -> (bool, usize) {
-        if let Some(entry) = self.lookup_entry(key.clone()) {
+        if let Some(entry) = self.lookup_entry(&key) {
             return (false, entry);
         }
 
@@ -160,11 +164,11 @@ impl<K: Default + Clone + PartialEq + Hash> IndexedSet<K> {
     }
 
     /// Returns the entry for the given key or None if the key is not found.
-    pub fn lookup_entry(&self, key: K) -> Option<usize> {
+    pub fn lookup_entry(&self, key: &K) -> Option<usize> {
         let head = self.compute_head(&key);
         let mut entry = self.heads[head];
         while entry >= 0 {
-            if key == self.keys[entry as usize] {
+            if *key == self.keys[entry as usize] {
                 return Some(entry as usize);
             }
             entry = self.nexts[entry as usize];
@@ -178,7 +182,7 @@ impl<K: Default + Clone + PartialEq + Hash> IndexedSet<K> {
     }
 
     /// Whether the key exists in the collection
-    pub fn contains(&self, key: K) -> bool {
+    pub fn contains(&self, key: &K) -> bool {
         self.lookup_entry(key).is_some()
     }
 
@@ -344,7 +348,7 @@ impl<K: Default + Clone + PartialEq + Hash> IndexedSet<K> {
 
 impl<K: Default + Clone + PartialEq + Hash> Default for IndexedSet<K> {
     fn default() -> Self {
-        Self::with_capacity(16, DEFAULT_LOAD_FACTOR)
+        Self::with_capacity(DEFAULT_INITIAL_CAPACITY, DEFAULT_LOAD_FACTOR)
     }
 }
 
@@ -462,7 +466,7 @@ mod tests {
 
             for key in self.reference_set.iter() {
                 assert!(
-                    self.indexed_set.contains(*key),
+                    self.indexed_set.contains(key),
                     "{:?} not found in indexed_set set",
                     key
                 );
@@ -605,7 +609,7 @@ mod tests {
         for key_entry in key_entries.iter() {
             assert_eq!(helper.indexed_set.get_key_at(key_entry.1), &key_entry.0);
             assert_eq!(
-                helper.indexed_set.lookup_entry(key_entry.0).unwrap(),
+                helper.indexed_set.lookup_entry(&key_entry.0).unwrap(),
                 key_entry.1
             );
         }
@@ -618,8 +622,8 @@ mod tests {
         for key in 30..40 {
             helper.insert(key);
         }
-        let entry35 = helper.indexed_set.lookup_entry(35).unwrap();
-        let entry36 = helper.indexed_set.lookup_entry(36).unwrap();
+        let entry35 = helper.indexed_set.lookup_entry(&35).unwrap();
+        let entry36 = helper.indexed_set.lookup_entry(&36).unwrap();
         helper.indexed_set.remove_at_and_reserve(entry35);
         helper.indexed_set.remove_at_and_reserve(entry36);
         helper.reference_set.remove(&35);

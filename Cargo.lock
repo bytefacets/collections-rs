@@ -45,6 +45,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "72f5acc6cb2ba439de613abc23857ec3d78374d8ed5ac84e9d11336e87da8649"
 
 [[package]]
+name = "bytefacets-collections"
+version = "0.1.0"
+dependencies = [
+ "criterion",
+ "rustc-hash",
+]
+
+[[package]]
 name = "cast"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -117,14 +125,6 @@ name = "clap_lex"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c8d4a3bb8b1e0c1050499d1815f5ab16d04f0959b233085fb31653fbfc9d98f9"
-
-[[package]]
-name = "collections-rs"
-version = "0.1.0"
-dependencies = [
- "criterion",
- "rustc-hash",
-]
 
 [[package]]
 name = "criterion"
