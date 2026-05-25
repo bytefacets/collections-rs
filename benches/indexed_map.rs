@@ -1,41 +1,41 @@
 // SPDX-FileCopyrightText: Copyright (c) 2026 Byte Facets
 // SPDX-License-Identifier: MIT
 
-use bytefacets_collections:: IndexedSet;
+use bytefacets_collections::IndexedMap;
 use criterion::{criterion_group, criterion_main, BatchSize, Criterion};
 use rustc_hash::FxHasher;
-use std::collections::HashSet;
+use std::collections::HashMap;
 use std::hash::BuildHasherDefault;
 
 fn bench_insert(c: &mut Criterion) {
-    let mut group = c.benchmark_group("set_insert");
-    group.bench_function("indexed_set_insert_1000", |b| {
+    let mut group = c.benchmark_group("map_insert");
+    group.bench_function("indexed_map_insert_1000", |b| {
         b.iter_batched(
             || {
-                let set = IndexedSet::with_capacity(2000, 0.75);
-                set
+                let map = IndexedMap::with_capacity(2000, 0.75);
+                map
             },
-            |mut set| {
+            |mut map| {
                 for i in 0..1000 {
-                    set.insert(i);
+                    map.insert(i, i);
                 }
             },
             BatchSize::SmallInput,
         );
     });
-    group.bench_function("hash_set_insert_1000", |b| {
+    group.bench_function("hash_map_insert_1000", |b| {
         b.iter_batched(
             || {
                 // note that using the default hasher (RandomState) is significantly worse performing
-                let set = HashSet::with_capacity_and_hasher(
+                let map = HashMap::with_capacity_and_hasher(
                     2000,
                     BuildHasherDefault::<FxHasher>::default(),
                 );
-                set
+                map
             },
-            |mut set| {
+            |mut map| {
                 for i in 0..1000 {
-                    set.insert(i);
+                    map.insert(i, i);
                 }
             },
             BatchSize::SmallInput,
@@ -44,39 +44,39 @@ fn bench_insert(c: &mut Criterion) {
 }
 
 fn bench_remove(c: &mut Criterion) {
-    let mut group = c.benchmark_group("set_remove");
-    group.bench_function("indexed_set_remove_1000", |b| {
+    let mut group = c.benchmark_group("map_remove");
+    group.bench_function("indexed_map_remove_1000", |b| {
         b.iter_batched(
             || {
-                let mut set = IndexedSet::with_capacity(2000, 0.75);
+                let mut map = IndexedMap::with_capacity(2000, 0.75);
                 for i in 0..1000 {
-                    set.insert(i);
+                    map.insert(i, i);
                 }
-                set
+                map
             },
-            |mut set| {
+            |mut map| {
                 for i in 0..1000 {
-                    set.remove(&i);
+                    map.remove(&i);
                 }
             },
             BatchSize::SmallInput,
         );
     });
-    group.bench_function("hash_set_remove_1000", |b| {
+    group.bench_function("hash_map_remove_1000", |b| {
         b.iter_batched(
             || {
-                let mut set = HashSet::with_capacity_and_hasher(
+                let mut map = HashMap::with_capacity_and_hasher(
                     2000,
                     BuildHasherDefault::<FxHasher>::default(),
                 );
                 for i in 0..1000 {
-                    set.insert(i);
+                    map.insert(i, i);
                 }
-                set
+                map
             },
-            |mut set| {
+            |mut map| {
                 for i in 0..1000 {
-                    set.remove(&i);
+                    map.remove(&i);
                 }
             },
             BatchSize::SmallInput,
@@ -85,16 +85,16 @@ fn bench_remove(c: &mut Criterion) {
 }
 
 fn bench_grow(c: &mut Criterion) {
-    let mut group = c.benchmark_group("set_grow");
-    group.bench_function("indexed_set_grow_1000", |b| {
+    let mut group = c.benchmark_group("map_grow");
+    group.bench_function("indexed_map_grow_1000", |b| {
         b.iter_batched(
             || {
-                let set = IndexedSet::with_capacity(16, 0.75);
-                set
+                let map = IndexedMap::with_capacity(16, 0.75);
+                map
             },
-            |mut set| {
+            |mut map| {
                 for i in 0..1000 {
-                    set.insert(i);
+                    map.insert(i, i);
                 }
             },
             BatchSize::SmallInput,
@@ -103,15 +103,15 @@ fn bench_grow(c: &mut Criterion) {
     group.bench_function("hash_map_grow_1000", |b| {
         b.iter_batched(
             || {
-                let set = HashSet::with_capacity_and_hasher(
+                let map = HashMap::with_capacity_and_hasher(
                     16,
                     BuildHasherDefault::<FxHasher>::default(),
                 );
-                set
+                map
             },
-            |mut set| {
+            |mut map| {
                 for i in 0..1000 {
-                    set.insert(i);
+                    map.insert(i, i);
                 }
             },
             BatchSize::SmallInput,
