@@ -5,6 +5,7 @@
 mod indexed_set;
 mod indexed_map;
 mod num_utils;
+pub mod pack;
 mod store;
 
 pub use indexed_set::IndexedSet;
