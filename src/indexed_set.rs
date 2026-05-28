@@ -214,9 +214,8 @@ impl<K: Default + Clone + PartialEq + Hash> IndexedSet<K> {
     fn find(&self, key: &K) -> Option<FindResult> {
         let head = self.compute_head(key);
         let head_entry = self.heads[head];
-        if head_entry.is_none() {
-            return None;
-        }
+        head_entry?;
+
         let mut prev = None;
         let mut entry = head_entry;
         while let Some(e) = entry {
@@ -227,7 +226,7 @@ impl<K: Default + Clone + PartialEq + Hash> IndexedSet<K> {
             }
             return Some(FindResult {
                 head: Some(head),
-                entry: Some(e as usize),
+                entry: Some(e),
                 prev_entry: prev,
             });
         }
@@ -373,7 +372,7 @@ pub struct Iter<'a, K> {
 
 impl<'a, K> Iter<'a, K> {
     fn next_head(&mut self) {
-        let mut head = if self.head.is_none() { 0 } else { self.head.unwrap() + 1 };
+        let mut head = self.head.map_or(0, |v| v + 1);
         let limit = std::cmp::min(self.set.max_head + 1, self.set.heads.len());
         while head < limit {
             self.entry = self.set.heads[head];
