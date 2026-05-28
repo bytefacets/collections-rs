@@ -23,7 +23,7 @@ pub struct IndexedSet<K> {
     /// The number of occupied slots in the hash table.
     size: usize,
     /// The tail of the free list
-    free_list: i32,
+    free_list: Option<usize>,
     /// The maximum number of entries the map can contain before resizing.
     resize_threshold: usize,
     next_unused_entry: usize,
@@ -31,8 +31,8 @@ pub struct IndexedSet<K> {
     max_head: usize,
     load_factor: f64,
     // hash table implementation
-    heads: Vec<i32>,
-    nexts: Vec<i32>,
+    heads: Vec<Option<usize>>,
+    nexts: Vec<Option<usize>>,
     /// The values of the set.
     keys: Vec<K>,
 }
@@ -60,13 +60,13 @@ impl<K: Default + Clone + PartialEq + Hash> IndexedSet<K> {
             capacity,
             size: 0,
             max_head: 0,
-            free_list: -1,
+            free_list: None,
             modification_count: 0,
             next_unused_entry: 0,
             load_factor,
             resize_threshold,
-            heads: vec![-1; capacity],
-            nexts: vec![-1; capacity],
+            heads: vec![None; capacity],
+            nexts: vec![None; capacity],
             keys: vec![K::default(); capacity],
         }
     }
@@ -104,7 +104,7 @@ impl<K: Default + Clone + PartialEq + Hash> IndexedSet<K> {
         }
 
         let head = self.compute_head(&key);
-        self.register_new_entry_for_head(head as i32, entry);
+        self.register_new_entry_for_head(head, entry);
         self.keys[entry] = key;
 
         // some light record-keeping
@@ -127,21 +127,21 @@ impl<K: Default + Clone + PartialEq + Hash> IndexedSet<K> {
 
     /// Removes the key at the given entry.
     pub fn remove_at(&mut self, entry: usize) {
-        let head = self.get_head(entry as i32);
-        let mut prev = -1;
-        let mut e = self.heads[head as usize];
-        while e >= 0 {
-            if e != entry as i32 {
-                prev = e;
-                e = self.nexts[e as usize];
+        let head = self.compute_head(&self.keys[entry]);
+        let mut prev = None;
+        let mut cur = self.heads[head];
+        while let Some(e) = cur {
+            if e != entry {
+                prev = cur;
+                cur = self.nexts[e];
                 continue;
             }
 
             let next = self.nexts[entry];
-            if prev < 0 {
-                self.heads[head as usize] = next; // new head
+            if let Some(_prev) = prev {
+                self.nexts[_prev] = next;
             } else {
-                self.nexts[prev as usize] = next;
+                self.heads[head] = next; // new head
             }
 
             self.free_reserved_entry(entry);
@@ -167,11 +167,11 @@ impl<K: Default + Clone + PartialEq + Hash> IndexedSet<K> {
     pub fn lookup_entry(&self, key: &K) -> Option<usize> {
         let head = self.compute_head(key);
         let mut entry = self.heads[head];
-        while entry >= 0 {
-            if *key == self.keys[entry as usize] {
-                return Some(entry as usize);
+        while let Some(e) = entry {
+            if *key == self.keys[e] {
+                return entry;
             }
-            entry = self.nexts[entry as usize];
+            entry = self.nexts[e];
         }
         None
     }
@@ -190,15 +190,15 @@ impl<K: Default + Clone + PartialEq + Hash> IndexedSet<K> {
     pub fn clear(&mut self) {
         if self.size > 0 {
             let lim = std::cmp::min(self.heads.len(), self.max_head + 1);
-            self.heads[0..lim].fill(-1);
+            self.heads[0..lim].fill(None);
 
             let lim = std::cmp::min(self.nexts.len(), self.next_unused_entry);
-            self.nexts[0..lim].fill(-1);
+            self.nexts[0..lim].fill(None);
             self.keys[0..lim].fill(K::default());
 
             self.size = 0;
             self.max_head = 0;
-            self.free_list = -1;
+            self.free_list = None;
         }
     }
 
@@ -214,32 +214,24 @@ impl<K: Default + Clone + PartialEq + Hash> IndexedSet<K> {
     fn find(&self, key: &K) -> Option<FindResult> {
         let head = self.compute_head(key);
         let head_entry = self.heads[head];
-        if head_entry < 0 {
+        if head_entry.is_none() {
             return None;
         }
-        let mut prev = -1;
-        let mut e = head_entry;
-        while e >= 0 {
-            if key != &self.keys[e as usize] {
-                prev = e;
-                e = self.nexts[e as usize];
+        let mut prev = None;
+        let mut entry = head_entry;
+        while let Some(e) = entry {
+            if key != &self.keys[e] {
+                prev = entry;
+                entry = self.nexts[e];
                 continue;
             }
             return Some(FindResult {
                 head: Some(head),
                 entry: Some(e as usize),
-                prev_entry: if prev >= 0 { Some(prev as usize) } else { None },
+                prev_entry: prev,
             });
         }
         None
-    }
-
-    fn get_head(&self, entry: i32) -> i32 {
-        let mut e = entry;
-        while e >= 0 {
-            e = self.nexts[e as usize];
-        }
-        -e - 1
     }
 
     fn compute_head(&self, _key: &K) -> usize {
@@ -254,10 +246,10 @@ impl<K: Default + Clone + PartialEq + Hash> IndexedSet<K> {
 
         self.calculate_new_capacity();
 
-        self.heads.fill(-1);
-        self.nexts.fill(-1);
-        self.heads.resize(self.capacity, -1);
-        self.nexts.resize(self.capacity, -1);
+        self.heads.fill(None);
+        self.nexts.fill(None);
+        self.heads.resize(self.capacity, None);
+        self.nexts.resize(self.capacity, None);
         self.keys.resize(self.capacity, K::default());
 
         // walk through the old heads and process each list
@@ -265,27 +257,25 @@ impl<K: Default + Clone + PartialEq + Hash> IndexedSet<K> {
         self.max_head = 0;
         for i in 0..len {
             let mut entry = old_heads[i];
-            while entry >= 0 {
-                let new_head = self.compute_head(&self.keys[entry as usize]);
-                self.register_new_entry_for_head(new_head as i32, entry as usize);
+            while let Some(e) = entry {
+                let new_head = self.compute_head(&self.keys[e]);
+                self.register_new_entry_for_head(new_head, e);
                 self.max_head = std::cmp::max(self.max_head, new_head);
-                entry = old_nexts[entry as usize];
+                entry = old_nexts[e];
             }
         }
         self.modification_count += 1;
     }
 
-    fn register_new_entry_for_head(&mut self, head: i32, entry: usize) {
+    fn register_new_entry_for_head(&mut self, head: usize, entry: usize) {
         // and link the entry in the hash table
-        if self.heads[head as usize] >= 0 {
+        if self.heads[head].is_some() {
             // if there's a head, point this entry to the head
-            self.nexts[entry] = self.heads[head as usize];
+            self.nexts[entry] = self.heads[head];
         } else {
-            // store reference to the head in negative space so that we can find
-            // the head when attempting to remove_at(entry)
-            self.nexts[entry] = -head - 1;
+            self.nexts[entry] = None;
         }
-        self.heads[head as usize] = entry as i32;
+        self.heads[head] = Some(entry);
     }
 
     /// Used in combination with the removeAtAndReserve method, this clears the key at the
@@ -293,13 +283,12 @@ impl<K: Default + Clone + PartialEq + Hash> IndexedSet<K> {
     /// you first reserved the entry. Calling this with active entries can corrupt the collection.
     pub fn free_reserved_entry(&mut self, entry: usize) {
         self.nexts[entry] = self.free_list;
-        self.free_list = entry as i32;
+        self.free_list = Some(entry);
         self.keys[entry] = K::default();
     }
 
     fn allocate_new_entry(&mut self) -> usize {
-        if self.free_list != -1 {
-            let entry = self.free_list as usize;
+        if let Some(entry) = self.free_list {
             self.free_list = self.nexts[entry];
             entry
         } else {
@@ -321,7 +310,7 @@ impl<K: Default + Clone + PartialEq + Hash> IndexedSet<K> {
             if free {
                 self.free_reserved_entry(entry);
             } else {
-                self.nexts[entry] = -1;
+                self.nexts[entry] = None;
                 // leave key and value set
             }
             self.size -= 1;
@@ -339,9 +328,8 @@ impl<K: Default + Clone + PartialEq + Hash> IndexedSet<K> {
             set: self,
             initialized: false,
             internal_mod_count: self.modification_count,
-            head: -1,
-            entry: -1,
-            prev: -1,
+            head: None,
+            entry: None,
         }
     }
 }
@@ -359,14 +347,14 @@ impl<T: fmt::Display> fmt::Display for IndexedSet<T> {
         let mut first = true;
         for h in 0..lim {
             let mut entry = self.heads[h];
-            if !first && entry >= 0 {
+            if !first && entry.is_some() {
                 write!(f, ", ")?;
             }
-            while entry >= 0 {
-                write!(f, "{}", self.keys[entry as usize])?;
-                entry = self.nexts[entry as usize];
+            while let Some(e) = entry {
+                write!(f, "{}", self.keys[e])?;
+                entry = self.nexts[e];
                 first = false;
-                if entry >= 0 {
+                if entry.is_some() {
                     write!(f, ", ")?;
                 }
             }
@@ -379,23 +367,23 @@ pub struct Iter<'a, K> {
     set: &'a IndexedSet<K>,
     initialized: bool,
     internal_mod_count: usize,
-    head: i32,
-    entry: i32,
-    prev: i32,
+    head: Option<usize>,
+    entry: Option<usize>,
 }
 
 impl<'a, K> Iter<'a, K> {
     fn next_head(&mut self) {
-        self.head += 1;
-        let limit = std::cmp::min(self.set.max_head + 1, self.set.heads.len()) as i32;
-        while self.head < limit {
-            self.entry = self.set.heads[self.head as usize];
-            if self.entry >= 0 {
-                self.prev = -1;
+        let mut head = if self.head.is_none() { 0 } else { self.head.unwrap() + 1 };
+        let limit = std::cmp::min(self.set.max_head + 1, self.set.heads.len());
+        while head < limit {
+            self.entry = self.set.heads[head];
+            if self.entry.is_some() {
+                self.head = Some(head);
                 return;
             }
-            self.head += 1;
+            head += 1;
         }
+        self.head = Some(head);
     }
 }
 
@@ -410,12 +398,10 @@ impl<'a, K> Iterator for Iter<'a, K> {
             self.next_head();
             self.initialized = true;
         }
-        if self.entry >= 0 {
-            let entry = self.entry as usize;
+        if let Some(entry) = self.entry {
             let result = (entry, &self.set.keys[entry]);
-            self.prev = self.entry;
-            self.entry = self.set.nexts[self.entry as usize];
-            if self.entry < 0 {
+            self.entry = self.set.nexts[entry];
+            if self.entry.is_none() {
                 self.next_head();
             }
             return Some(result);
@@ -484,15 +470,15 @@ mod tests {
 
     /// Iterates a range, computing the heads of the keys, and stopping when it's computed the
     /// given number of keys.
-    fn pick_keys_in_bucket<F>(hash_func: F, range: Range<i32>, num_keys: usize) -> (usize, Vec<i32>)
+    fn pick_keys_in_bucket<F>(hash_func: F, range: Range<i32>, num_keys: usize) -> (usize, Vec<usize>)
     where
         F: Fn(&i32) -> usize,
     {
-        let mut headsets: [HashSet<i32>; 16] = std::array::from_fn(|_| HashSet::new());
+        let mut headsets: [HashSet<usize>; 16] = std::array::from_fn(|_| HashSet::new());
         let mut heads_to_test = Vec::new();
         for i in range {
             let head = hash_func(&i);
-            headsets[head].insert(i);
+            headsets[head].insert(i as usize);
             if headsets[head].len() == num_keys {
                 for k in headsets[head].iter() {
                     heads_to_test.push(k.clone());
@@ -539,15 +525,15 @@ mod tests {
             pick_keys_in_bucket(|k: &i32| helper.indexed_set.compute_head(&k), 0..48, 3);
         let mut entries = Vec::new();
         for key in keys_to_test.clone() {
-            entries.push(helper.insert(key).1 as i32);
+            entries.push(helper.insert(key as i32).1);
         }
         helper.assert_sets_equal();
-        assert_eq!(helper.indexed_set.heads[head], entries[2]);
+        assert_eq!(helper.indexed_set.heads[head], Some(entries[2]));
         assert_eq!(
-            helper.remove(keys_to_test[0].clone()).unwrap(),
+            helper.remove(keys_to_test[0].clone() as i32).unwrap(),
             entries[0] as usize
         );
-        assert_eq!(helper.indexed_set.heads[head], entries[2]);
+        assert_eq!(helper.indexed_set.heads[head], Some(entries[2]));
 
         helper.assert_sets_equal();
     }
@@ -561,13 +547,13 @@ mod tests {
             pick_keys_in_bucket(|k: &i32| helper.indexed_set.compute_head(&k), 0..48, 3);
         let mut entries = Vec::new();
         for key in keys_to_test.clone() {
-            entries.push(helper.insert(key).1 as i32);
+            entries.push(helper.insert(key as i32).1);
         }
 
         helper.assert_sets_equal();
-        assert_eq!(helper.indexed_set.heads[head], entries[2]);
-        assert_eq!(helper.remove(keys_to_test[2]).unwrap(), entries[2] as usize);
-        assert_eq!(helper.indexed_set.heads[head], entries[1]);
+        assert_eq!(helper.indexed_set.heads[head], Some(entries[2]));
+        assert_eq!(helper.remove(keys_to_test[2] as i32), Some(entries[2]));
+        assert_eq!(helper.indexed_set.heads[head], Some(entries[1]));
 
         helper.assert_sets_equal();
     }
@@ -656,8 +642,8 @@ mod tests {
             assert_eq!(helper.indexed_set.keys[k], 0);
         }
         for k in 0..helper.indexed_set.heads.len() {
-            assert_eq!(helper.indexed_set.heads[k], -1);
-            assert_eq!(helper.indexed_set.nexts[k], -1);
+            assert_eq!(helper.indexed_set.heads[k], None);
+            assert_eq!(helper.indexed_set.nexts[k], None);
         }
     }
 }
