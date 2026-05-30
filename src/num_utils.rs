@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Copyright (c) 2026 Byte Facets
 // SPDX-License-Identifier: MIT
 
-pub fn next_power_of_2(n: usize) -> usize {
+pub const fn next_power_of_2(n: usize) -> usize {
     if n == 0 {
         1
     } else {
