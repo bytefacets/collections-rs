@@ -654,4 +654,16 @@ mod tests {
             assert_eq!(helper.indexed_set.nexts[k], None);
         }
     }
+
+    #[test]
+    fn should_build_from_iter() {
+        let iset = IndexedSet::from_iter(0..26);
+        assert_eq!(iset.len(), 26);
+        let expected: HashSet<i32> = HashSet::from_iter(0..26);
+        for i in 0..26 {
+            assert!(expected.contains(&i));
+            assert!(iset.contains(&i));
+        }
+    }
+
 }
