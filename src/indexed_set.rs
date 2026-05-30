@@ -277,7 +277,7 @@ impl<K: Default + Clone + PartialEq + Hash> IndexedSet<K> {
         self.heads[head] = Some(entry);
     }
 
-    /// Used in combination with the removeAtAndReserve method, this clears the key at the
+    /// Used in combination with the remove_at_and_reserve method, this clears the key at the
     /// reserved entry and puts the entry back on the free list. This does not check whether
     /// you first reserved the entry. Calling this with active entries can corrupt the collection.
     pub fn free_reserved_entry(&mut self, entry: usize) {
@@ -409,6 +409,16 @@ impl<'a, K> Iterator for Iter<'a, K> {
     }
 }
 
+impl<K: Default + Clone + PartialEq + Hash> FromIterator<K> for IndexedSet<K> {
+    fn from_iter<I: IntoIterator<Item=K>>(iter: I) -> Self {
+        let mut set = IndexedSet::new();
+        for value in iter {
+            set.insert(value);
+        }
+        set
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -425,8 +435,7 @@ mod tests {
         /// helper method to maintain set insert parity between our set and a reference set
         fn insert(&mut self, key: i32) -> (bool, usize) {
             self.reference_set.insert(key);
-            let entry = self.indexed_set.insert(key);
-            entry
+            self.indexed_set.insert(key)
         }
 
         /// helper method to maintain set remove parity between our set and a reference set
@@ -480,7 +489,7 @@ mod tests {
             headsets[head].insert(i as usize);
             if headsets[head].len() == num_keys {
                 for k in headsets[head].iter() {
-                    heads_to_test.push(k.clone());
+                    heads_to_test.push(*k);
                 }
                 return (head, heads_to_test);
             }
@@ -521,7 +530,7 @@ mod tests {
     fn should_remove_end_of_bucket() {
         let mut helper = setup();
         let (head, keys_to_test) =
-            pick_keys_in_bucket(|k: &i32| helper.indexed_set.compute_head(&k), 0..48, 3);
+            pick_keys_in_bucket(|k: &i32| helper.indexed_set.compute_head(k), 0..48, 3);
         let mut entries = Vec::new();
         for key in keys_to_test.clone() {
             entries.push(helper.insert(key as i32).1);
@@ -529,8 +538,8 @@ mod tests {
         helper.assert_sets_equal();
         assert_eq!(helper.indexed_set.heads[head], Some(entries[2]));
         assert_eq!(
-            helper.remove(keys_to_test[0].clone() as i32).unwrap(),
-            entries[0] as usize
+            helper.remove(keys_to_test[0] as i32).unwrap(),
+            entries[0]
         );
         assert_eq!(helper.indexed_set.heads[head], Some(entries[2]));
 
@@ -543,7 +552,7 @@ mod tests {
     fn should_remove_start_of_bucket() {
         let mut helper = setup();
         let (head, keys_to_test) =
-            pick_keys_in_bucket(|k: &i32| helper.indexed_set.compute_head(&k), 0..48, 3);
+            pick_keys_in_bucket(|k: &i32| helper.indexed_set.compute_head(k), 0..48, 3);
         let mut entries = Vec::new();
         for key in keys_to_test.clone() {
             entries.push(helper.insert(key as i32).1);
@@ -645,4 +654,16 @@ mod tests {
             assert_eq!(helper.indexed_set.nexts[k], None);
         }
     }
+
+    #[test]
+    fn should_build_from_iter() {
+        let iset = IndexedSet::from_iter(0..26);
+        assert_eq!(iset.len(), 26);
+        let expected: HashSet<i32> = HashSet::from_iter(0..26);
+        for i in 0..26 {
+            assert!(expected.contains(&i));
+            assert!(iset.contains(&i));
+        }
+    }
+
 }

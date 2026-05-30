@@ -212,7 +212,7 @@ mod tests {
         // Clear
         map.clear();
         assert_eq!(map.len(), 0);
-        assert_eq!(map.is_empty(), true);
+        assert!(map.is_empty());
     }
 
     #[test]
@@ -234,14 +234,14 @@ mod tests {
         }
 
         // Keys iteration
-        let observed: HashSet<i32> = HashSet::from_iter(map.keys().cloned().into_iter());
-        let expected: HashSet<i32> = HashSet::from_iter((30..70).collect::<Vec<i32>>().into_iter());
+        let observed: HashSet<i32> = HashSet::from_iter(map.keys().cloned());
+        let expected: HashSet<i32> = HashSet::from_iter((30..70).collect::<Vec<i32>>());
         assert_eq!(observed, expected);
 
         // Values iteration
-        let observed: HashSet<i32> = HashSet::from_iter(map.values().cloned().into_iter());
+        let observed: HashSet<i32> = HashSet::from_iter(map.values().cloned());
         let expected: HashSet<i32> =
-            HashSet::from_iter((30..70).map(|i| i * 3).collect::<Vec<i32>>().into_iter());
+            HashSet::from_iter((30..70).map(|i| i * 3).collect::<Vec<i32>>());
         assert_eq!(observed, expected);
     }
 }

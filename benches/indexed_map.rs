@@ -12,8 +12,7 @@ fn bench_insert(c: &mut Criterion) {
     group.bench_function("indexed_map_insert_1000", |b| {
         b.iter_batched(
             || {
-                let map = IndexedMap::with_capacity(2000, 0.75);
-                map
+                IndexedMap::with_capacity(2000, 0.75)
             },
             |mut map| {
                 for i in 0..1000 {
@@ -27,11 +26,10 @@ fn bench_insert(c: &mut Criterion) {
         b.iter_batched(
             || {
                 // note that using the default hasher (RandomState) is significantly worse performing
-                let map = HashMap::with_capacity_and_hasher(
+                HashMap::with_capacity_and_hasher(
                     2000,
                     BuildHasherDefault::<FxHasher>::default(),
-                );
-                map
+                )
             },
             |mut map| {
                 for i in 0..1000 {
@@ -89,8 +87,7 @@ fn bench_grow(c: &mut Criterion) {
     group.bench_function("indexed_map_grow_1000", |b| {
         b.iter_batched(
             || {
-                let map = IndexedMap::with_capacity(16, 0.75);
-                map
+                IndexedMap::with_capacity(16, 0.75)
             },
             |mut map| {
                 for i in 0..1000 {
@@ -103,11 +100,10 @@ fn bench_grow(c: &mut Criterion) {
     group.bench_function("hash_map_grow_1000", |b| {
         b.iter_batched(
             || {
-                let map = HashMap::with_capacity_and_hasher(
+                HashMap::with_capacity_and_hasher(
                     16,
                     BuildHasherDefault::<FxHasher>::default(),
-                );
-                map
+                )
             },
             |mut map| {
                 for i in 0..1000 {
