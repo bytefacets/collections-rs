@@ -11,6 +11,7 @@ pub struct CompactOneToMany {
     left: Side,
 }
 
+#[allow(dead_code)] // clippy does not find a lot of the usages from just the tests
 impl CompactOneToMany {
     /// Default factory method
     pub fn new() -> Self {
@@ -125,6 +126,8 @@ struct CompactManyToMany {
     base: CompactOneToMany,
     right: Side,
 }
+
+#[allow(dead_code)] // clippy does not find a lot of the usages from just the tests
 impl CompactManyToMany {
     /// Default factory method
     pub fn new() -> Self {
@@ -256,6 +259,7 @@ pub struct Mapping<'a> {
     key: Option<usize>,
 }
 
+#[allow(dead_code)] // clippy does not find a lot of the usages from just the tests
 impl<'a> Mapping<'a> {
     /// The count of the mappings for the key
     pub fn count(&self) -> usize {
@@ -295,6 +299,7 @@ struct Side {
     counts: Vec<usize>,
 }
 
+#[allow(dead_code)] // clippy does not find a lot of the usages from just the tests
 impl Side {
     fn with_capacity(initial_capacity: usize, initial_mapping_capacity: usize) -> Self {
         Side {
@@ -353,6 +358,7 @@ pub struct OneToManyIterator<'a> {
     entry: Option<usize>,
 }
 
+#[allow(dead_code)]
 pub struct LeftRightEntry {
     left: usize,
     right: usize,
@@ -507,7 +513,7 @@ mod o2m_tests {
         }
         assert_eq!(
             set,
-            HashSet::from_iter((0..40 as usize).filter(|i| *i != 29).map(|i| i * 10))
+            HashSet::from_iter((0..40).filter(|i| *i != 29).map(|i| i * 10))
         );
     }
 
@@ -524,7 +530,7 @@ mod o2m_tests {
     fn should_clear() {
         let mut o2m = CompactOneToMany::new();
         for i in 0..40 {
-            o2m.put(1 % 3, i * 10);
+            o2m.put(i % 3, i * 10);
         }
         o2m.clear();
         assert_eq!(o2m.len(), 0);
@@ -551,7 +557,7 @@ mod o2m_tests {
         }
         assert_eq!(
             set,
-            HashSet::from_iter((0..=40 as usize).filter(|i| *i != 29).map(|i| i * 10))
+            HashSet::from_iter((0..=40).filter(|i| *i != 29).map(|i| i * 10))
         );
 
         o2m.free_reserved_entry(29);
@@ -705,7 +711,7 @@ mod m2m_tests {
         }
         assert_eq!(
             set,
-            HashSet::from_iter((0..40 as usize).filter(|i| *i != 29).map(|i| i * 10))
+            HashSet::from_iter((0..40).filter(|i| *i != 29).map(|i| i * 10))
         );
     }
 
@@ -722,7 +728,7 @@ mod m2m_tests {
     fn should_clear() {
         let mut m2m = CompactManyToMany::new();
         for i in 0..40 {
-            m2m.put(1 % 3, i * 10);
+            m2m.put(i % 3, i * 10);
         }
         m2m.clear();
         assert_eq!(m2m.len(), 0);
@@ -753,7 +759,7 @@ mod m2m_tests {
         }
         assert_eq!(
             set,
-            HashSet::from_iter((0..=40 as usize).filter(|i| *i != 29).map(|i| i * 10))
+            HashSet::from_iter((0..=40).filter(|i| *i != 29).map(|i| i * 10))
         );
 
         m2m.free_reserved_entry(29);
